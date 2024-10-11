@@ -102,28 +102,3 @@ module type SETFUNCTOR =
 module AbstractSet = (Set : SETFUNCTOR)
 
 module AbstractStringSet = AbstractSet(OrderedString)
-
-module type SET =
-    sig
-      type element
-      type set
-      val empty : set
-      val add : element -> set -> set
-      val member : element -> set -> bool
-    end
-
-module WrongSet = (Set : functor(Elt: ORDERED_TYPE) -> SET)
-
-module WrongStringSet = WrongSet(OrderedString)
-
-module AbstractSet2 =
-    (Set : functor(Elt : ORDERED_TYPE) -> (SET with type element = Elt.t))
-
-module NoCaseString =
-  struct
-    type t = string
-    let compare s1 s2 =
-      OrderedString.compare (String.lowercase_ascii s1) (String.lowercase_ascii s2)
-  end
-
-module NoCaseString = AbstractSet(NoCaseString)
