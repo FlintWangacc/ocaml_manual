@@ -53,3 +53,17 @@ let bump ?step x =
 let test2 ?x ?y () = test ?x ?y () ()
 
 let _ = test2 ?x:None
+
+(* 4.2 Labels an type inference *)
+let h' g= g ~y:2 ~x:3
+
+(* let _ = h' f *)
+
+let bump_it (bump : ?step:int->int->int) x =
+  bump ~step:2 x
+
+let _ = bump_it bump 1
+
+let twice f (x : int) = f (f x)
+
+let _ = twice bump 2
