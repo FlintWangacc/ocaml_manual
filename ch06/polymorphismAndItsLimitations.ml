@@ -89,3 +89,79 @@ end
 module List2: COLLECTION = Implementation
 
 let _ = List2.empty ()
+
+(* 6.2 Polymorphic recursion *)
+type 'a regular_nested = List of 'a list | Nested of 'a regular_nested list
+
+let l = Nested[ List [1]; Nested [List [2; 3]]; Nested [Nested[]]]
+
+let rec maximal_depth = function
+  | List _ -> 1
+  | Nested [] -> 0
+  | Nested (a::q) -> 1 + max (maximal_depth a) (maximal_depth (Nested q))
+
+type 'a nested = List of 'a list | Nested of 'a list nested
+
+(* 6.2.1 Explicitly polymorphic annotations *)
+let rec depth: 'a. 'a nested -> int = function
+  | List _ -> 1
+  | Nested n -> 1 + depth n
+
+let sum: 'a -> 'b -> 'c = fun x y -> x + y
+
+let rec depth: 'a. 'a nested -> _ = function
+  | List _ -> 1
+  | Nested n -> 1 + depth n
+
+(* 6.2.2 More examples *)
+let len nested =
+  let map_and_sum f = List.fold_left (fun acc x -> acc + f x) 0 in
+  let rec len: 'a. ('a list -> int ) -> 'a nested -> int =
+  fun nested_len n ->
+    match n with
+    | List l -> nested_len l
+    | Nested n -> len (map_and_sum nested_len) n
+  in
+  len List.length nested
+
+let _ = len (Nested(Nested (List [ [ [1;2]; [3] ]; [[]; [4];[5;6;7]];[[]]])))
+
+let shape n =
+  let rec shape: 'a 'b. ('a nested -> int nested) ->
+    ('b list list -> 'a list) -> 'b nested -> int nested
+    = fun nest nested_shape ->
+      function
+      | List l -> raise
+        (Invalid_argument "shape equires nested_list of depth greater than !")
+      | Nested (List l) -> nest @@ List (nested_shape l)
+      | Nested n ->
+        let nested_shape = List.map nested_shape in
+        let nest x = nest (Nested x) in
+        shape nest nested_shape n in
+  shape (fun n -> n) (fun l -> List.map List.length l ) n
+
+
+let _ = shape (Nested(Nested (List [ [ [1;2]; [3] ]; [[]; [4];[5;6;7]];[[]]])))
+
+(* 6.3 Higher-rank polymorphic functions *)
+let average_depth x y = (depth x + depth y) / 2
+
+let average_len x y = (len x + len y) / 2
+
+let one = average_len (List [2]) (List [[]])
+
+let average f x y = (f x + f y) / 2
+
+let _ = average_len (List [2]) (List [[]])
+
+(*let _ = average len (List[2]) (List [[]])*)
+
+type 'a nested_reduction = {f:'elt. 'elt nested -> 'a}
+
+let boxed_len = { f = len }
+
+let obj_len = object method f:'a. 'a nested -> 'b = len end
+
+let average nsm x y = (nsm.f x + nsm.f y) / 2
+
+let average (obj:<f:'a. 'a nested -> _ > ) x y = (obj#f x + obj#f y) / 2
