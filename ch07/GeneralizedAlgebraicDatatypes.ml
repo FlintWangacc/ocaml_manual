@@ -38,3 +38,40 @@ type _ t =
 let deep : (char t * int) option -> char = function
   | None -> 'c'
   | _ -> .
+
+(* 7.4 Advanced examples *)
+type _ typ =
+  | Int : int typ
+  | String : string typ
+  | Pair : 'a typ * 'b typ -> ('a * 'b) typ
+
+let rec to_string : type t. t typ -> t -> string =
+  fun t x ->
+  match t with
+  | Int -> Int.to_string x
+  | String -> Printf.sprintf "%S" x
+  | Pair (t1, t2) ->
+      let (x1, x2) = x in
+      Printf.sprintf "(%s,%s)" (to_string t1 x1) (to_string t2 x2)
+
+type (_,_) eq = Eq : ('a,'a) eq
+
+let rec eq_type : type a b .a typ ->b typ -> (a,b) eq option =
+  fun a b ->
+  match a, b with
+  | Int, Int -> Some Eq
+  | String, String -> Some Eq
+  | Pair(a1,a2), Pair(b1,b2) ->
+      begin match eq_type a1 b1, eq_type a2 b2 with
+      | Some Eq, Some Eq -> Some Eq
+      | _ -> None
+      end
+  | _ -> None
+
+type dyn = Dyn : 'a typ * 'a -> dyn
+
+let get_dyn : type a. a typ -> dyn -> a option =
+  fun a (Dyn(b,x)) ->
+  match eq_type a b with
+  | None -> None
+  | Some Eq -> Some x
