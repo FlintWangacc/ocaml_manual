@@ -326,3 +326,80 @@ module Set : SET =
         method tag = repr
       end
   end
+
+(* 8.3 The subject/observer pattern *)
+class virtual ['subject, 'event] observer =
+  object
+    method virtual notify : 'subject -> 'event -> unit
+  end
+
+class ['observer, 'event] subject =
+  object (self)
+    val mutable observers = ([]:'observer list)
+    method add_observer obs = observers <- (obs :: observers)
+    method notify_observers (e : 'event) =
+      List.iter (fun x -> x#notify self e) observers
+  end
+
+type event = Raise | Resize | Move
+
+let string_of_event = function
+    Raise -> "Raise" | Resize -> "Resize" | Move -> "Move"
+
+let count = ref 0
+
+class ['observer] window_subject =
+  let id = count := succ !count; !count in
+  object (self)
+    inherit ['observer, event] subject
+    val mutable position = 0
+    method identity = id
+    method move x = position <- position + x; self#notify_observers Move
+    method draw = Printf.printf "{Position = %d\n}" position
+  end
+
+class ['subject] window_observer =
+  object
+    inherit ['subject, event] observer
+    method notify s e = s#draw
+  end
+
+let window = new window_subject
+
+let window_observer = new window_observer
+
+let _ = window#add_observer window_observer
+
+let _ = window#move 1
+
+class ['observer] richer_window_subject =
+  object (self)
+    inherit ['observer] window_subject
+    val mutable size = 1
+    method resize x = size <- size + x; self#notify_observers Resize
+    val mutable top = false
+    method raise = top <- true; self#notify_observers Raise
+    method draw = Printf.printf "{Position =%d, Size = %d}\n" position size; 
+  end
+
+class ['subject] richer_window_observer =
+  object
+    inherit ['subject] window_observer as super
+    method notify s e = if e <> Raise then s#raise; super#notify s e
+  end
+
+class ['subject] trace_observer =
+  object
+    inherit ['subject, event] observer
+    method notify s e =
+      Printf.printf
+        "<Window %d <== %s>\n" s#identity (string_of_event e)
+  end
+
+let window = new richer_window_subject
+
+let _ = window#add_observer (new richer_window_observer)
+
+let _ = window#add_observer (new trace_observer)
+
+let _ = window#move 1; window#resize 2
