@@ -75,3 +75,14 @@ let get_dyn : type a. a typ -> dyn -> a option =
   match eq_type a b with
   | None -> None
   | Some Eq -> Some x
+
+(* 7.6 Explict naming of existentials *)
+type _ closure = Closure : ('a -> 'b) * 'a -> 'b closure
+let eval = fun (Closure (type a) (f, x : (a -> _) * _)) -> f (x : a)
+
+(* 7.7 Equations on non-local abstract types *)
+module M : sig type t val x : t val e : (t, int) eq end = struct
+  type t = int
+  let x = 33
+  let e = Eq
+end
