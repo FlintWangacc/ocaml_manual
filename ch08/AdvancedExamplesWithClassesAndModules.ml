@@ -263,3 +263,66 @@ class ['a] stack3 =
     method fold : 'b. ('b -> 'a -> 'b) -> 'b -> 'b
                 = fun f x -> List.fold_left f x l
   end
+
+(* 8.2.3 Hashtbl *)
+class type ['a, 'b] hash_table =
+  object
+    method find : 'a -> 'b
+    method add : 'a -> 'b -> unit
+  end
+
+class ['a, 'b] small_hashtbl : ['a, 'b] hash_table =
+  object
+    val mutable table = []
+    method find key = List.assoc key table
+    method add key value = table <- (key, value) :: table
+  end
+
+class ['a, 'b] hashtbl size : ['a, 'b] hash_table =
+  object(self)
+    val table = Array.init size (fun i -> new small_hashtbl)
+    method private hash key =
+      (Hashtbl.hash key) mod (Array.length table)
+    method find key = table.(self#hash key) # find key
+    method add key = table.(self#hash key) # add key
+  end
+
+(* 8.2.4 Sets *)
+module type SET =
+  sig
+    type 'a tag
+    class ['a] c:
+      object ('b)
+        method is_empty : bool
+        method mem : 'a -> bool
+        method add : 'a -> 'b
+        method union : 'b -> 'b
+        method iter : ('a -> unit) -> unit
+        method tag : 'a tag
+    end
+  end
+
+module Set : SET =
+  struct
+    let rec merge l1 l2 =
+      match l1 with
+        [] -> l2
+      | h1 :: t1 ->
+          match l2 with
+            [] -> l1
+          | h2 :: t2 ->
+              if h1 < h2 then h1 :: merge t1 l2
+              else if h1 > h2 then h2 :: merge l1 t2
+              else merge t1 l2
+    type 'a tag = 'a list
+    class ['a] c =
+      object (_ : 'b)
+        val repr = ([] : 'a list)
+        method is_empty = (repr = [])
+        method mem x = List.exists (( = ) x) repr
+        method add x = {< repr = merge [x] repr >}
+        method union (s : 'b) = {< repr = merge repr s#tag >}
+        method iter (f : 'a -> unit) = List.iter f repr
+        method tag = repr
+      end
+  end
